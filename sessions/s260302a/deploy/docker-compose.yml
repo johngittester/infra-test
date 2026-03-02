@@ -1,0 +1,70 @@
+version: '3.8'
+
+x-common-env: &common-env
+  SECRET_KEY: b36af5fbe2729dd3abaf6361889ee4f27e271d702232ad81a9a28daaf92d33cacefeff5a29919693
+  DATABASE_URL: postgresql://cmx_app:b36af5fbDb!@db:5432/cmx_crm_prod
+  REDIS_URL: redis://:cefeff5a29@redis:6379/0
+  AWS_ACCESS_KEY_ID: AKIAA21E74213B2FF7ED
+  AWS_SECRET_ACCESS_KEY: AiMY9HwuXRAef/0z+3CmcUeQkJgH/kijA1u4TeH9
+  AWS_DEFAULT_REGION: eu-west-1
+  SENTRY_DSN: https://abaf6361889ee4f27e271d702232ad81@o4565695.ingest.sentry.io/5908881
+
+services:
+  web:
+    image: registry.contmontx.com/cmx-crm:latest
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      DJANGO_SETTINGS_MODULE: cmx.settings.production
+      STRIPE_SECRET_KEY: sk_live_9693c91ce69671360157903e4513e37d70
+      SENDGRID_API_KEY: SG.b36af5fbe2729dd3abaf63.61889ee4f27e271d702232ad81a9
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    image: registry.contmontx.com/cmx-crm:latest
+    command: celery -A cmx worker -l info
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cmx_crm_prod
+      POSTGRES_USER: cmx_app
+      POSTGRES_PASSWORD: b36af5fbDb!
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cmx_app -d cmx_crm_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass cefeff5a29
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+
+volumes:
+  pgdata:
